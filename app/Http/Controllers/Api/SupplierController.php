@@ -14,8 +14,14 @@ class SupplierController extends Controller
      */
     public function index()
     {
-        $suppliers = Supplier::all();
-        
+        $suppliers = Supplier::select('supplier.*')
+            ->selectRaw('COUNT(DISTINCT transaksi.id_transaksi) as transaksi_count')
+            ->selectRaw('COALESCE(SUM(tebu.berat_tebu), 0) as total_berat_kg')
+            ->leftJoin('transaksi', 'supplier.id_supplier', '=', 'transaksi.id_supplier')
+            ->leftJoin('tebu', 'transaksi.id_tebu', '=', 'tebu.id')
+            ->groupBy('supplier.id_supplier', 'supplier.nama_supplier', 'supplier.asal_kebun', 'supplier.created_at', 'supplier.updated_at')
+            ->get();
+
         return response()->json([
             'success' => true,
             'message' => 'Data supplier berhasil diambil',

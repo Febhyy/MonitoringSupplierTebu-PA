@@ -1,0 +1,234 @@
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import PageHeader from '../components/PageHeader';
+import SupplierCard from '../components/SupplierCard';
+
+function SupplierPage({ autoOpenModal = false }) {
+    const navigate = useNavigate();
+    const [suppliers, setSuppliers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [form, setForm] = useState({ nama_supplier: '', asal_kebun: '' });
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        fetchSuppliers();
+        // Jika dibuka dari route /tambahsupplier, langsung buka modal
+        if (autoOpenModal) {
+            setShowModal(true);
+        }
+    }, []);
+
+    const fetchSuppliers = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get('/api/supplier');
+            if (response.data.success) {
+                setSuppliers(response.data.data);
+            }
+        } catch (err) {
+            console.error('Gagal memuat data supplier', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter berdasarkan search
+    const filtered = useMemo(() => {
+        const q = search.toLowerCase();
+        return suppliers.filter(
+            (s) =>
+                s.nama_supplier?.toLowerCase().includes(q) ||
+                s.asal_kebun?.toLowerCase().includes(q)
+        );
+    }, [suppliers, search]);
+
+    // Simpan URL sebelum modal dibuka
+    const prevUrlRef = useRef(window.location.pathname);
+
+    const handleOpenModal = () => {
+        setForm({ nama_supplier: '', asal_kebun: '' });
+        setError('');
+        prevUrlRef.current = window.location.pathname;
+        window.history.replaceState(null, '', '/tambahsupplier');
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        if (autoOpenModal) {
+            navigate('/supplier');
+        } else {
+            window.history.replaceState(null, '', prevUrlRef.current);
+        }
+        setShowModal(false);
+        setError('');
+    };
+
+    const handleSave = async () => {
+        if (!form.nama_supplier.trim()) {
+            setError('Nama pemilik wajib diisi.');
+            return;
+        }
+        setSaving(true);
+        setError('');
+        try {
+            await axios.post('/api/supplier/public', form);
+            setShowModal(false);
+            fetchSuppliers();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Gagal menyimpan data.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-100 flex flex-col">
+
+            {/* Header */}
+            <PageHeader
+                title="Manajemen Supplier Tebu"
+                subtitle="Sistem Monitoring Supplier Tebu"
+            />
+
+            {/* Breadcrumb */}
+            <div className="px-8 py-3 bg-white border-b border-gray-200 flex items-center gap-2 text-sm text-gray-500">
+                <button
+                    onClick={() => navigate('/dashboard')}
+                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                    </svg>
+                    Dashboard
+                </button>
+                <span>/</span>
+                <span className="text-gray-700 font-medium">Supplier</span>
+            </div>
+
+            {/* Main Content */}
+            <main className="flex-1 p-8">
+
+                {/* Search Bar */}
+                <div className="relative mb-4">
+                    <svg
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500 w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Cari Supplier berdasarkan nama atau lokasi.."
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-white shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm"
+                    />
+                </div>
+
+                {/* Tombol Add Supplier */}
+                <div className="flex justify-end mb-5">
+                    <button
+                        onClick={handleOpenModal}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl shadow transition-colors text-sm"
+                    >
+                        + Add Supplier
+                    </button>
+                </div>
+
+                {/* Grid Kartu Supplier */}
+                {loading ? (
+                    <p className="text-center text-gray-400 py-16">Memuat data supplier...</p>
+                ) : filtered.length === 0 ? (
+                    <p className="text-center text-gray-400 py-16">
+                        {search ? 'Supplier tidak ditemukan.' : 'Belum ada data supplier.'}
+                    </p>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {filtered.map((supplier) => (
+                            <SupplierCard key={supplier.id_supplier} supplier={supplier} />
+                        ))}
+                    </div>
+                )}
+            </main>
+
+            {/* ===== MODAL Data Pemilik Tebu ===== */}
+            {showModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+                    onClick={handleCloseModal}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+                            Data Pemilik Tebu
+                        </h2>
+
+                        {error && (
+                            <div className="bg-red-50 text-red-600 border border-red-200 rounded-lg px-4 py-2 mb-4 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Nama Pemilik */}
+                        <div className="mb-5">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nama Pemilik
+                            </label>
+                            <input
+                                type="text"
+                                value={form.nama_supplier}
+                                onChange={(e) => setForm({ ...form, nama_supplier: e.target.value })}
+                                placeholder="Masukkan nama lengkap pemilik"
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            />
+                        </div>
+
+                        {/* Asal Kebun */}
+                        <div className="mb-7">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Asal Kebun / lokasi
+                            </label>
+                            <input
+                                type="text"
+                                value={form.asal_kebun}
+                                onChange={(e) => setForm({ ...form, asal_kebun: e.target.value })}
+                                placeholder="Contoh : Kebun Sukamaju, Lampung Tengah"
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            />
+                        </div>
+
+                        {/* Tombol */}
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={handleCloseModal}
+                                className="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            >
+                                {saving ? 'Menyimpan...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default SupplierPage;
