@@ -16,13 +16,15 @@ class Hasil extends Model
 
     protected $fillable = [
         'id_klasifikasi',
+        'nilai_brix',
         'nilai_pol',
         'nilai_rendemen',
         'interpretasi_kualitas',
     ];
 
     protected $casts = [
-        'nilai_pol' => 'decimal:2',
+        'nilai_brix'     => 'decimal:2',
+        'nilai_pol'      => 'decimal:2',
         'nilai_rendemen' => 'decimal:2',
     ];
 

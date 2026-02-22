@@ -175,7 +175,7 @@ class TransaksiController extends Controller
      */
     public function show($id)
     {
-        $transaksi = Transaksi::with(['supplier', 'tebu', 'klasifikasi'])->find($id);
+        $transaksi = Transaksi::with(['supplier', 'tebu', 'klasifikasi.hasil'])->find($id);
 
         if (!$transaksi) {
             return response()->json([
@@ -259,11 +259,32 @@ class TransaksiController extends Controller
             ], 404);
         }
 
-        $transaksi->delete();
+        try {
+            \DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Transaksi berhasil dihapus'
-        ], 200);
+            $idTebu = $transaksi->id_tebu;
+
+            // Hapus transaksi (klasifikasi ikut cascade dari DB)
+            $transaksi->delete();
+
+            // Hapus data tebu yang terkait (sudah tidak dipakai)
+            if ($idTebu) {
+                \App\Models\Tebu::where('id', $idTebu)->delete();
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaksi berhasil dihapus'
+            ], 200);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

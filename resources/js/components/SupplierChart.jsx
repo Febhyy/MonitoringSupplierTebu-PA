@@ -61,25 +61,27 @@ function SupplierChart({ suppliers = [], selectedSupplier, onSupplierChange, loa
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             {/* Card Header */}
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">
+            <div className="relative flex items-center justify-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 text-center">
                     Dashboard Monitoring Supplier
                 </h3>
 
-                {/* Supplier Dropdown */}
-                <select
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-white min-w-[160px]"
-                    value={selectedSupplier}
-                    onChange={(e) => onSupplierChange(e.target.value)}
-                    disabled={loading}
-                >
-                    <option value="">-- Pilih Supplier --</option>
-                    {suppliers.map((supplier) => (
-                        <option key={supplier.id_supplier} value={supplier.id_supplier}>
-                            {supplier.nama_supplier}
-                        </option>
-                    ))}
-                </select>
+                {/* Supplier Dropdown — pojok kanan */}
+                <div className="absolute right-0">
+                    <select
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-white min-w-[160px]"
+                        value={selectedSupplier}
+                        onChange={(e) => onSupplierChange(e.target.value)}
+                        disabled={loading}
+                    >
+                        <option value="">-- Pilih Supplier --</option>
+                        {suppliers.map((supplier) => (
+                            <option key={supplier.id_supplier} value={supplier.id_supplier}>
+                                {supplier.nama_supplier}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Chart */}

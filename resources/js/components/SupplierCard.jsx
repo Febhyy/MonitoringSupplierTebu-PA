@@ -35,14 +35,15 @@ function SupplierCard({ supplier }) {
                 </div>
             </div>
 
-            <div className="flex gap-4 pt-4 border-t border-gray-200">
-                <div className="flex-1 text-center">
+            {/* Stat boxes */}
+            <div className="flex gap-3 mt-4">
+                <div className="flex-1 bg-gray-100 rounded-2xl py-4 text-center">
                     <div className="text-2xl font-bold text-gray-800">{totalPengiriman}</div>
-                    <div className="text-xs text-gray-600 mt-1">Pengiriman</div>
+                    <div className="text-sm text-gray-500 mt-1">Pengiriman</div>
                 </div>
-                <div className="flex-1 text-center border-l border-gray-200">
+                <div className="flex-1 bg-gray-100 rounded-2xl py-4 text-center">
                     <div className="text-2xl font-bold text-gray-800">{totalBeratTon} T</div>
-                    <div className="text-xs text-gray-600 mt-1">Total Berat</div>
+                    <div className="text-sm text-gray-500 mt-1">Total Berat</div>
                 </div>
             </div>
         </div>

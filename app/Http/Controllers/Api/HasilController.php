@@ -29,8 +29,9 @@ class HasilController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id_klasifikasi' => 'required|exists:klasifikasi,id_klasifikasi',
-            'nilai_pol' => 'required|numeric|min:0|max:100',
+            'id_klasifikasi' => 'nullable|exists:klasifikasi,id_klasifikasi',
+            'nilai_brix'     => 'nullable|numeric|min:0|max:100',
+            'nilai_pol'      => 'required|numeric|min:0|max:100',
             'nilai_rendemen' => 'required|numeric|min:0|max:100',
         ]);
 
@@ -42,12 +43,12 @@ class HasilController extends Controller
             ], 422);
         }
 
-        $data = $request->all();
-        
-        // Auto-generate interpretasi kualitas based on nilai pol and rendemen
+        $data = $request->only(['id_klasifikasi', 'nilai_brix', 'nilai_pol', 'nilai_rendemen']);
+
+        // Auto-generate interpretasi kualitas berdasarkan nilai_rendemen + hasil klasifikasi
         $data['interpretasi_kualitas'] = $this->generateInterpretasi(
-            $request->nilai_pol, 
-            $request->nilai_rendemen
+            $request->nilai_rendemen,
+            $request->hasil_klasifikasi ?? 'Bersih'
         );
 
         $hasil = Hasil::create($data);
@@ -96,8 +97,9 @@ class HasilController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'id_klasifikasi' => 'sometimes|required|exists:klasifikasi,id_klasifikasi',
-            'nilai_pol' => 'sometimes|required|numeric|min:0|max:100',
+            'id_klasifikasi' => 'nullable|exists:klasifikasi,id_klasifikasi',
+            'nilai_brix'     => 'nullable|numeric|min:0|max:100',
+            'nilai_pol'      => 'sometimes|required|numeric|min:0|max:100',
             'nilai_rendemen' => 'sometimes|required|numeric|min:0|max:100',
         ]);
 
@@ -109,13 +111,13 @@ class HasilController extends Controller
             ], 422);
         }
 
-        $data = $request->all();
+        $data = $request->only(['id_klasifikasi', 'nilai_brix', 'nilai_pol', 'nilai_rendemen']);
 
         // Auto-generate interpretasi if nilai updated
-        if ($request->has('nilai_pol') || $request->has('nilai_rendemen')) {
-            $nilaiPol = $request->nilai_pol ?? $hasil->nilai_pol;
-            $nilaiRendemen = $request->nilai_rendemen ?? $hasil->nilai_rendemen;
-            $data['interpretasi_kualitas'] = $this->generateInterpretasi($nilaiPol, $nilaiRendemen);
+        if ($request->has('nilai_pol') || $request->has('nilai_rendemen') || $request->has('hasil_klasifikasi')) {
+            $nilaiRendemen    = $request->nilai_rendemen ?? $hasil->nilai_rendemen;
+            $hasilKlasifikasi = $request->hasil_klasifikasi ?? 'Bersih';
+            $data['interpretasi_kualitas'] = $this->generateInterpretasi($nilaiRendemen, $hasilKlasifikasi);
         }
 
         $hasil->update($data);
@@ -151,20 +153,26 @@ class HasilController extends Controller
     }
 
     /**
-     * Generate interpretasi kualitas based on nilai pol and rendemen
+     * Generate interpretasi kualitas berdasarkan nilai rendemen + hasil klasifikasi
+     *
+     * Tabel aturan:
+     * Tinggi (>=85%) + Bersih  => Kualitas bagus
+     * Tinggi         + Kotor   => Hasil bagus, tapi kotor
+     * Sedang (75-84%)+ Bersih  => Cukup bagus
+     * Sedang         + Kotor   => Hasil sedang + kotor
+     * Rendah (<75%)  + Bersih  => Bersih tapi tidak manis
+     * Rendah         + Kotor   => Kualitas buruk
      */
-    private function generateInterpretasi($nilaiPol, $nilaiRendemen)
+    private function generateInterpretasi($nilaiRendemen, $hasilKlasifikasi = 'Bersih')
     {
-        $avgNilai = ($nilaiPol + $nilaiRendemen) / 2;
+        $bersih = str_contains(strtolower($hasilKlasifikasi), 'bersih');
 
-        if ($avgNilai >= 80) {
-            return 'Sangat Baik';
-        } elseif ($avgNilai >= 60) {
-            return 'Baik';
-        } elseif ($avgNilai >= 40) {
-            return 'Cukup';
+        if ($nilaiRendemen >= 85) {
+            return $bersih ? 'Kualitas bagus' : 'Hasil bagus, tapi kotor';
+        } elseif ($nilaiRendemen >= 75) {
+            return $bersih ? 'Cukup bagus' : 'Hasil sedang + kotor';
         } else {
-            return 'Kurang';
+            return $bersih ? 'Bersih tapi tidak manis' : 'Kualitas buruk';
         }
     }
 }
