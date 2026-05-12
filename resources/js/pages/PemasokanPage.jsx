@@ -32,6 +32,11 @@ function PemasokanPage() {
     // Modal Add/Edit Pengiriman
     const [showModal, setShowModal] = useState(false);
     const [editingTransaksi, setEditingTransaksi] = useState(null); // null = mode add
+    
+    // Custom Delete Modal
+    const [deleteModal, setDeleteModal] = useState(false);
+    const [deletingTransaksiId, setDeletingTransaksiId] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Tanggal & jam minimum (tidak boleh sebelum sekarang)
     const todayStr = new Date().toISOString().split('T')[0];
@@ -97,6 +102,7 @@ function PemasokanPage() {
             status_antrian: 'menunggu',
         });
         setError('');
+        setDeleteModal(false);
         setShowModal(true);
     };
 
@@ -112,13 +118,22 @@ function PemasokanPage() {
             status_antrian: t.status_antrian ?? 'menunggu',
         });
         setError('');
+        setDeleteModal(false);
         // Ubah URL ke /pemasokan/{id_supplier}/edit/{id_transaksi}
         window.history.replaceState(null, '', `/pemasokan/${id_supplier}/edit/${t.id_transaksi}`);
         setShowModal(true);
     };
 
+    const handleOpenDelete = (id_transaksi) => {
+        setDeletingTransaksiId(id_transaksi);
+        setDeleteModal(true);
+        window.history.replaceState(null, '', `/pemasokan/${id_supplier}/hapus/${id_transaksi}`);
+        setShowModal(true);
+    };
+
     const handleCloseModal = () => {
         setShowModal(false);
+        setDeleteModal(false);
         setError('');
         // Kembalikan URL ke /pemasokan/{id_supplier}
         window.history.replaceState(null, '', `/pemasokan/${id_supplier}`);
@@ -187,17 +202,20 @@ function PemasokanPage() {
         }
     };
 
-    const handleDelete = async (id_transaksi) => {
-        if (!window.confirm('Hapus pengiriman ini?')) return;
+    const handleDelete = async () => {
+        setDeleting(true);
         try {
-            const res = await axios.delete(`/api/transaksi/${id_transaksi}`);
+            const res = await axios.delete(`/api/transaksi/${deletingTransaksiId}`);
             if (res.data.success) {
-                setTransaksi(prev => prev.filter(t => t.id_transaksi !== id_transaksi));
+                setTransaksi(prev => prev.filter(t => t.id_transaksi !== deletingTransaksiId));
+                handleCloseModal();
             } else {
                 alert('Gagal menghapus: ' + (res.data.message || 'Unknown error'));
             }
         } catch (err) {
             alert('Gagal menghapus: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -402,7 +420,7 @@ function PemasokanPage() {
                                                 </button>
                                                 {/* Hapus */}
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(t.id_transaksi); }}
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenDelete(t.id_transaksi); }}
                                                     className="text-gray-400 hover:text-red-600 transition-colors"
                                                     title="Hapus"
                                                 >
@@ -431,124 +449,152 @@ function PemasokanPage() {
                         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8"
                         onClick={e => e.stopPropagation()}
                     >
-                        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
-                            {editingTransaksi ? 'Edit Pengiriman' : 'Data Pemasokan'}
-                        </h2>
+                        {deleteModal ? (
+                            <>
+                                <h2 className="text-2xl font-bold text-gray-800 text-center mb-4">
+                                    Konfirmasi Hapus
+                                </h2>
+                                <p className="text-center text-gray-600 mb-6">
+                                    Apakah Anda yakin ingin menghapus pengiriman ini? Semua data terkait mungkin akan ikut terhapus.
+                                </p>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={handleCloseModal}
+                                        className="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        disabled={deleting}
+                                        className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {deleting ? 'Menghapus...' : 'Hapus'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+                                    {editingTransaksi ? 'Edit Pengiriman' : 'Data Pemasokan'}
+                                </h2>
 
-                        {error && (
-                            <div className="bg-red-50 text-red-600 border border-red-200 rounded-lg px-4 py-2 mb-4 text-sm">
-                                {error}
-                            </div>
+                                {error && (
+                                    <div className="bg-red-50 text-red-600 border border-red-200 rounded-lg px-4 py-2 mb-4 text-sm">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    {/* Berat Tebu */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Berat Tebu (Kg)</label>
+                                        <input
+                                            type="number"
+                                            value={form.berat_tebu}
+                                            onChange={e => setForm({ ...form, berat_tebu: e.target.value })}
+                                            placeholder="2.500"
+                                            min="0"
+                                            step="0.01"
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                        />
+                                    </div>
+                                    {/* No. Kendaraan */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">No. Kendaraan</label>
+                                        <input
+                                            type="text"
+                                            value={form.no_kendaraan}
+                                            onChange={e => setForm({ ...form, no_kendaraan: e.target.value })}
+                                            placeholder="Contoh : BM 6789 PA"
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                        />
+                                    </div>
+                                    {/* Tanggal Masuk */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk</label>
+                                        <input
+                                            type="date"
+                                            value={form.tanggal_masuk}
+                                            onChange={e => setForm({ ...form, tanggal_masuk: e.target.value })}
+                                            min={todayStr}
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                        />
+                                    </div>
+                                    {/* Jam Masuk */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
+                                        <input
+                                            type="time"
+                                            value={form.jam_masuk}
+                                            onChange={e => setForm({ ...form, jam_masuk: e.target.value })}
+                                            min={minJam}
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Catatan */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
+                                    <textarea
+                                        value={form.catatan}
+                                        onChange={e => setForm({ ...form, catatan: e.target.value })}
+                                        placeholder="Catatan khusus untuk kondisi tebu ataupun informasi tambahan lainnya"
+                                        rows={3}
+                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                                    />
+                                </div>
+
+                                {/* Status Grid */}
+                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                    {/* Status Antrian */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Status Antrian (Kamera)</label>
+                                        <select
+                                            value={form.status_antrian}
+                                            onChange={e => setForm({ ...form, status_antrian: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                        >
+                                            <option value="menunggu">Menunggu</option>
+                                            <option value="diproses">Diproses</option>
+                                            <option value="selesai">Selesai</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Status Lab */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Status Lab</label>
+                                        <select
+                                            value={form.status}
+                                            onChange={e => setForm({ ...form, status: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="selesai">Selesai</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+
+                                {/* Tombol */}
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={handleCloseModal}
+                                        className="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {saving ? 'Menyimpan...' : 'Save'}
+                                    </button>
+                                </div>
+                            </>
                         )}
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            {/* Berat Tebu */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Berat Tebu (Kg)</label>
-                                <input
-                                    type="number"
-                                    value={form.berat_tebu}
-                                    onChange={e => setForm({ ...form, berat_tebu: e.target.value })}
-                                    placeholder="2.500"
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                />
-                            </div>
-                            {/* No. Kendaraan */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">No. Kendaraan</label>
-                                <input
-                                    type="text"
-                                    value={form.no_kendaraan}
-                                    onChange={e => setForm({ ...form, no_kendaraan: e.target.value })}
-                                    placeholder="Contoh : BM 6789 PA"
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                />
-                            </div>
-                            {/* Tanggal Masuk */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk</label>
-                                <input
-                                    type="date"
-                                    value={form.tanggal_masuk}
-                                    onChange={e => setForm({ ...form, tanggal_masuk: e.target.value })}
-                                    min={todayStr}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                />
-                            </div>
-                            {/* Jam Masuk */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
-                                <input
-                                    type="time"
-                                    value={form.jam_masuk}
-                                    onChange={e => setForm({ ...form, jam_masuk: e.target.value })}
-                                    min={minJam}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Catatan */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
-                            <textarea
-                                value={form.catatan}
-                                onChange={e => setForm({ ...form, catatan: e.target.value })}
-                                placeholder="Catatan khusus untuk kondisi tebu ataupun informasi tambahan lainnya"
-                                rows={3}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
-                            />
-                        </div>
-
-                        {/* Status Grid */}
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            {/* Status Antrian */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Antrian (Kamera)</label>
-                                <select
-                                    value={form.status_antrian}
-                                    onChange={e => setForm({ ...form, status_antrian: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-                                >
-                                    <option value="menunggu">Menunggu</option>
-                                    <option value="diproses">Diproses</option>
-                                    <option value="selesai">Selesai</option>
-                                </select>
-                            </div>
-
-                            {/* Status Lab */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Lab</label>
-                                <select
-                                    value={form.status}
-                                    onChange={e => setForm({ ...form, status: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-                                >
-                                    <option value="pending">Pending</option>
-                                    <option value="selesai">Selesai</option>
-                                </select>
-                            </div>
-                        </div>
-
-
-                        {/* Tombol */}
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={handleCloseModal}
-                                className="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                            >
-                                {saving ? 'Menyimpan...' : 'Save'}
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

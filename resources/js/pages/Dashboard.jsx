@@ -103,9 +103,9 @@ function Dashboard() {
         }
     };
 
-    const handleOpenModal = () => {
+    const handleOpenModal = (customUrl = '/tambahsupplier') => {
         showModalRef.current = true;
-        window.history.replaceState(null, '', '/tambahsupplier');
+        window.history.replaceState(null, '', customUrl);
         setShowModal(true);
     };
 

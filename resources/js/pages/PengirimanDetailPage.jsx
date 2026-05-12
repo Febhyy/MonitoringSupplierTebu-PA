@@ -58,7 +58,7 @@ export default function PengirimanDetailPage() {
             if (res.data.success) {
                 const data = res.data.data;
                 setTransaksi(data);
-                
+
                 // Hanya update form NIR saat load awal untuk mencegah ketikan user terhapus
                 if (data.hasil && !isPolling) {
                     setNir({
@@ -137,7 +137,7 @@ export default function PengirimanDetailPage() {
                         console.error('Failed auto-update status lab', e);
                     }
                 }
-                
+
                 setNirStatus(type === 'saved' ? 'saved' : 'updated');
                 fetchTransaksi(); // Refresh transaksi untuk memuat hasil akhir & interpretasi dari backend
             } else {
@@ -390,9 +390,9 @@ export default function PengirimanDetailPage() {
 
                             <div className="space-y-3">
                                 {[
-                                    { key: 'briks', label: '% Briks', placeholder: '18.5', required: false },
-                                    { key: 'pol', label: '% Pol', placeholder: '16.3', required: true },
-                                    { key: 'rendemen', label: '% Rendemen', placeholder: '8.9', required: true },
+                                    { key: 'briks', label: '% Briks', placeholder: '', required: false },
+                                    { key: 'pol', label: '% Pol', placeholder: '', required: true },
+                                    { key: 'rendemen', label: '% Rendemen', placeholder: '', required: true },
                                 ].map(field => (
                                     <div key={field.key}>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
