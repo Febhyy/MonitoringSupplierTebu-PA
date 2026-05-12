@@ -15,7 +15,7 @@ class KlasifikasiController extends Controller
      */
     public function index()
     {
-        $klasifikasi = Klasifikasi::with(['transaksi', 'hasil'])->get();
+        $klasifikasi = Klasifikasi::with(['transaksi'])->get();
         
         return response()->json([
             'success' => true,
@@ -44,6 +44,14 @@ class KlasifikasiController extends Controller
             ], 422);
         }
 
+        $transaksi = \App\Models\Transaksi::find($request->id_transaksi);
+        if ($transaksi->status_antrian !== 'diproses') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi tidak sedang diproses. Pengiriman data ditolak.'
+            ], 400);
+        }
+
         $data = $request->all();
 
         // Handle image upload
@@ -55,7 +63,24 @@ class KlasifikasiController extends Controller
         }
 
         $klasifikasi = Klasifikasi::create($data);
-        $klasifikasi->load(['transaksi', 'hasil']);
+
+        // Kalkulasi real-time hasil akhir
+        $semuaKlasifikasi = Klasifikasi::where('id_transaksi', $klasifikasi->id_transaksi)->get();
+        $totalSampel = $semuaKlasifikasi->count();
+        $bersihCount = $semuaKlasifikasi->filter(function($k) { return stripos($k->label, 'bersih') !== false; })->count();
+        $kotorCount = $semuaKlasifikasi->filter(function($k) { return stripos($k->label, 'kotor') !== false; })->count();
+        
+        $hasilAkhir = ($bersihCount >= $kotorCount) ? 'Tebu Bersih' : 'Tebu Kotor';
+
+        // Update tabel hasil
+        $hasil = \App\Models\Hasil::where('id_transaksi', $klasifikasi->id_transaksi)->first();
+        if ($hasil) {
+            $hasil->update([
+                'hasil_akhir' => $hasilAkhir,
+            ]);
+        }
+
+        $klasifikasi->load(['transaksi']);
 
         return response()->json([
             'success' => true,
@@ -69,7 +94,7 @@ class KlasifikasiController extends Controller
      */
     public function show($id)
     {
-        $klasifikasi = Klasifikasi::with(['transaksi', 'hasil'])->find($id);
+        $klasifikasi = Klasifikasi::with(['transaksi'])->find($id);
 
         if (!$klasifikasi) {
             return response()->json([
@@ -130,7 +155,7 @@ class KlasifikasiController extends Controller
         }
 
         $klasifikasi->update($data);
-        $klasifikasi->load(['transaksi', 'hasil']);
+        $klasifikasi->load(['transaksi']);
 
         return response()->json([
             'success' => true,
@@ -153,12 +178,33 @@ class KlasifikasiController extends Controller
             ], 404);
         }
 
+        $id_transaksi = $klasifikasi->id_transaksi;
+
         // Delete image file
         if ($klasifikasi->gambar && Storage::disk('public')->exists($klasifikasi->gambar)) {
             Storage::disk('public')->delete($klasifikasi->gambar);
         }
 
         $klasifikasi->delete();
+
+        // Kalkulasi ulang real-time hasil akhir setelah dihapus
+        $semuaKlasifikasi = Klasifikasi::where('id_transaksi', $id_transaksi)->get();
+        $totalSampel = $semuaKlasifikasi->count();
+        
+        $hasilAkhir = null;
+        if ($totalSampel > 0) {
+            $bersihCount = $semuaKlasifikasi->filter(function($k) { return stripos($k->label, 'bersih') !== false; })->count();
+            $kotorCount = $semuaKlasifikasi->filter(function($k) { return stripos($k->label, 'kotor') !== false; })->count();
+            $hasilAkhir = ($bersihCount >= $kotorCount) ? 'Tebu Bersih' : 'Tebu Kotor';
+        }
+
+        // Update tabel hasil
+        $hasil = \App\Models\Hasil::where('id_transaksi', $id_transaksi)->first();
+        if ($hasil) {
+            $hasil->update([
+                'hasil_akhir' => $hasilAkhir,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

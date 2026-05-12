@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios'; // ← dipakai untuk fetch data transaksi asli
+import axios from 'axios';
 import PageHeader from '../components/PageHeader';
 
 // ─────────────────────────── HELPERS ─────────────────────────────────
@@ -26,22 +26,6 @@ function getInterpretasi(rendemen, hasilAkhir) {
     }
 }
 
-// ────────── DATA DUMMY (hanya untuk klasifikasi, NIR, hasil) ──────────
-const DUMMY_KLASIFIKASI = [
-    { id_klasifikasi: 101, label: 'Tebu Bersih', akurasi: 94.5, gambar: null },
-    { id_klasifikasi: 102, label: 'Tebu Bersih', akurasi: 91.2, gambar: null },
-    { id_klasifikasi: 103, label: 'Tebu Kotor', akurasi: 88.7, gambar: null },
-    { id_klasifikasi: 104, label: 'Tebu Bersih', akurasi: 96.1, gambar: null },
-];
-
-const DUMMY_HASIL = {
-    id_hasil: 55,
-    nilai_brix: 18.5,
-    nilai_pol: 16.3,
-    nilai_rendemen: 8.9,
-};
-// ─────────────────────────────────────────────────────────────────────
-
 // ─────────────────────────── MAIN PAGE ───────────────────────────────
 export default function PengirimanDetailPage() {
     const { id_transaksi } = useParams();
@@ -52,52 +36,75 @@ export default function PengirimanDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // Klasifikasi, NIR, hasil — menggunakan dummy
-    const [klasifikasi, setKlasifikasi] = useState([]);
     const [nir, setNir] = useState({ briks: '', pol: '', rendemen: '' });
-    const [savedHasil, setSavedHasil] = useState(null);
     const [nirStatus, setNirStatus] = useState(''); // '' | 'loading' | 'saved' | 'updated'
 
     useEffect(() => {
         fetchTransaksi();
-        loadDummyKlasifikasi();
+
+        const intervalId = setInterval(() => {
+            fetchTransaksi(true);
+        }, 3000);
+
+        return () => clearInterval(intervalId);
     }, [id_transaksi]);
 
     // ── fetch data transaksi ASLI dari API ──
-    const fetchTransaksi = async () => {
-        setLoading(true);
-        setError('');
+    const fetchTransaksi = async (isPolling = false) => {
+        if (!isPolling) setLoading(true);
+        if (!isPolling) setError('');
         try {
             const res = await axios.get(`/api/transaksi/${id_transaksi}`);
             if (res.data.success) {
-                setTransaksi(res.data.data);
+                const data = res.data.data;
+                setTransaksi(data);
+                
+                // Hanya update form NIR saat load awal untuk mencegah ketikan user terhapus
+                if (data.hasil && !isPolling) {
+                    setNir({
+                        briks: data.hasil.nilai_brix ?? '',
+                        pol: data.hasil.nilai_pol ?? '',
+                        rendemen: data.hasil.nilai_rendemen ?? ''
+                    });
+                }
             } else {
                 setError('Data pengiriman tidak ditemukan.');
             }
         } catch (err) {
-            setError('Gagal memuat data pengiriman.');
+            if (!isPolling) setError('Gagal memuat data pengiriman.');
             console.error(err);
         } finally {
-            setLoading(false);
+            if (!isPolling) setLoading(false);
         }
     };
 
-    // ── load DATA DUMMY untuk klasifikasi, NIR, hasil ──
-    const loadDummyKlasifikasi = () => {
-        // Simulasi delay
-        setTimeout(() => {
-            setKlasifikasi(DUMMY_KLASIFIKASI);
-            setSavedHasil(DUMMY_HASIL);
-            setNir({
-                briks: DUMMY_HASIL.nilai_brix,
-                pol: DUMMY_HASIL.nilai_pol,
-                rendemen: DUMMY_HASIL.nilai_rendemen,
-            });
-        }, 300);
+    // ── update status antrian ──
+    const handleStatusAntrianChange = async (e) => {
+        const newStatus = e.target.value;
+        try {
+            const res = await axios.put(`/api/transaksi/${id_transaksi}/status-antrian`, { status_antrian: newStatus });
+            if (res.data.success) {
+                setTransaksi({ ...transaksi, status_antrian: newStatus });
+            }
+        } catch (err) {
+            alert('Gagal mengubah status antrian: ' + (err.response?.data?.message || err.message));
+        }
     };
 
-    // ── simpan / update NIR (DUMMY — tidak hit API) ──
-    const handleNirAction = (type) => {
+    // ── hapus klasifikasi ──
+    const handleDeleteKlasifikasi = async (id_klasifikasi) => {
+        try {
+            const res = await axios.delete(`/api/klasifikasi/${id_klasifikasi}`);
+            if (res.data.success) {
+                fetchTransaksi(); // Langsung fetch ulang agar stats update
+            }
+        } catch (err) {
+            alert('Gagal menghapus data klasifikasi: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    // ── simpan / update NIR ──
+    const handleNirAction = async (type) => {
         if (!nir.pol || !nir.rendemen) {
             alert('% Pol dan % Rendemen wajib diisi!');
             return;
@@ -105,41 +112,34 @@ export default function PengirimanDetailPage() {
 
         setNirStatus('loading');
 
-        // Simulasi simpan
-        setTimeout(() => {
-            const fakeHasil = {
-                id_hasil: savedHasil?.id_hasil ?? 55,
-                nilai_brix: nir.briks || null,
-                nilai_pol: nir.pol,
-                nilai_rendemen: nir.rendemen,
-            };
-            setSavedHasil(fakeHasil);
-            setNirStatus(type === 'saved' ? 'saved' : 'updated');
-            setTimeout(() => setNirStatus(''), 2500);
-        }, 800);
-
-        /* ── KODE ASLI NIR (dicomment sementara) ─────────────────────────
-        setNirStatus('loading');
-        const firstKlas = klasifikasi?.[0];
+        // Payload API mengikuti backend HasilController
         const payload = {
-            id_klasifikasi:    firstKlas?.id_klasifikasi ?? null,
-            nilai_brix:        nir.briks || null,
-            nilai_pol:         nir.pol,
-            nilai_rendemen:    nir.rendemen,
-            hasil_klasifikasi: hasilAkhir !== '-' ? hasilAkhir : 'Bersih',
+            id_transaksi: id_transaksi,
+            nilai_brix: nir.briks || null,
+            nilai_pol: nir.pol,
+            nilai_rendemen: nir.rendemen,
         };
 
         try {
             let res;
-            if (!savedHasil || type === 'saved') {
-                res = await axios.post('/api/hasil', payload);
+            if (transaksi?.hasil && transaksi.hasil.id_hasil) {
+                res = await axios.put(`/api/hasil/${transaksi.hasil.id_hasil}`, payload);
             } else {
-                res = await axios.put(`/api/hasil/${savedHasil.id_hasil}`, payload);
+                res = await axios.post('/api/hasil', payload);
             }
 
             if (res.data.success) {
-                setSavedHasil(res.data.data);
+                // Auto-update status to selesai
+                if (transaksi?.status !== 'selesai') {
+                    try {
+                        await axios.put(`/api/transaksi/${id_transaksi}/status`, { status: 'selesai' });
+                    } catch (e) {
+                        console.error('Failed auto-update status lab', e);
+                    }
+                }
+                
                 setNirStatus(type === 'saved' ? 'saved' : 'updated');
+                fetchTransaksi(); // Refresh transaksi untuk memuat hasil akhir & interpretasi dari backend
             } else {
                 alert('Gagal: ' + (res.data.message || 'Terjadi kesalahan'));
                 setNirStatus('');
@@ -153,11 +153,10 @@ export default function PengirimanDetailPage() {
         } finally {
             setTimeout(() => setNirStatus(''), 2500);
         }
-        ────────────────────────────────────────────────────────────────── */
     };
 
     // ─────────────────────────── LOADING / ERROR ─────────────────────
-    if (loading) {
+    if (loading && !transaksi) {
         return (
             <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f1f5f9' }}>
                 <PageHeader title="Detail Pengiriman" subtitle="Sistem Monitoring Supplier Tebu" />
@@ -181,7 +180,7 @@ export default function PengirimanDetailPage() {
     }
 
     // ─────────────────────────── DERIVED DATA ────────────────────────
-    // Info transaksi → dari API asli
+    // Info transaksi
     const supplierNama = transaksi.supplier?.nama_supplier ?? '-';
     const idSupplier = transaksi.id_supplier;
     const beratDisplay = transaksi.tebu?.berat_tebu
@@ -191,18 +190,25 @@ export default function PengirimanDetailPage() {
     const tanggalDisplay = formatTanggal(transaksi.tanggal_masuk);
     const waktuDisplay = transaksi.jam_masuk?.slice(0, 5) ?? '-';
 
-    // Kalkulasi hasil klasifikasi → dari dummy
+    // Data Klasifikasi dan Hasil
+    const klasifikasi = transaksi.klasifikasi || [];
+    const savedHasil = transaksi.hasil;
+
+    // Kalkulasi hasil klasifikasi frontend
     const total = klasifikasi.length;
-    const bersihCount = klasifikasi.filter(k => k.label === 'Tebu Bersih').length;
-    const kotorCount = klasifikasi.filter(k => k.label === 'Tebu Kotor').length;
+    const bersihCount = klasifikasi.filter(k => k.label.toLowerCase().includes('bersih')).length;
+    const kotorCount = klasifikasi.filter(k => k.label.toLowerCase().includes('kotor')).length;
     const avgAkurasi = total > 0
         ? Math.round(klasifikasi.reduce((s, k) => s + Number(k.akurasi), 0) / total)
         : 0;
-    const hasilAkhir = total === 0 ? '-' : (bersihCount >= kotorCount ? 'Tebu Bersih' : 'Tebu Kotor');
 
-    // Interpretasi → dari dummy NIR + hasil klasifikasi dummy
+    // Hasil Akhir diambil dari backend jika ada, jika tidak ada/kosong kembalikan '-'
+    const hasilAkhir = total === 0 ? '-' : (savedHasil?.hasil_akhir || '-');
+
+    // Interpretasi 
+    // Walaupun backend sudah menghitung interpretasi_kualitas, kita bisa juga menghitung local / menampilkannya
     const kualitasInfo = getInterpretasi(savedHasil?.nilai_rendemen, hasilAkhir);
-    const interpretasi = kualitasInfo?.label ?? null;
+    const interpretasi = savedHasil?.interpretasi_kualitas || kualitasInfo?.label || null;
 
     // ─────────────────────────── RENDER ──────────────────────────────
     return (
@@ -244,7 +250,35 @@ export default function PengirimanDetailPage() {
                     <span className="text-lg font-bold text-gray-800">
                         Pengiriman #{transaksi.id_transaksi}
                     </span>
-                    <div className="flex flex-wrap gap-8 ml-auto">
+                    <div className="flex flex-wrap gap-6 ml-auto items-center">
+
+                        {/* ── Status Antrian Dropdown ── */}
+                        <div className="flex items-center gap-2 mr-2">
+                            <span className="text-sm text-gray-500 font-medium">Status Antrian:</span>
+                            <select
+                                value={transaksi.status_antrian || 'menunggu'}
+                                onChange={handleStatusAntrianChange}
+                                className={`text-sm font-semibold rounded-lg px-3 py-1.5 outline-none cursor-pointer border focus:ring-2 transition-colors
+                                    ${transaksi.status_antrian === 'menunggu' ? 'bg-yellow-50 text-yellow-700 border-yellow-200 focus:ring-yellow-400' :
+                                        transaksi.status_antrian === 'diproses' ? 'bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-400' :
+                                            'bg-green-50 text-green-700 border-green-200 focus:ring-green-400'}`}
+                            >
+                                <option value="menunggu">Menunggu</option>
+                                <option value="diproses">Diproses</option>
+                                <option value="selesai">Selesai</option>
+                            </select>
+                        </div>
+
+                        {/* ── Status Lab Badge ── */}
+                        <div className="flex items-center gap-2 mr-4">
+                            <span className="text-sm text-gray-500 font-medium">Status Lab:</span>
+                            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg
+                                ${transaksi.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}
+                            >
+                                {transaksi.status === 'pending' ? 'Pending' : 'Selesai'}
+                            </span>
+                        </div>
+
                         {[
                             { label: 'Berat Tebu', value: beratDisplay },
                             { label: 'Tanggal & Waktu', value: `${tanggalDisplay} - ${waktuDisplay}` },
@@ -265,7 +299,7 @@ export default function PengirimanDetailPage() {
                 {/* ── Grid 2 Kolom ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                    {/* ════ KIRI: Hasil Klasifikasi (DUMMY) ════ */}
+                    {/* ════ KIRI: Hasil Klasifikasi ════ */}
                     <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
                         <h3 className="text-base font-bold text-gray-800 mb-4">Hasil Klasifikasi</h3>
 
@@ -274,7 +308,7 @@ export default function PengirimanDetailPage() {
                                 Belum ada data klasifikasi untuk pengiriman ini.
                             </div>
                         ) : (
-                            <div className="space-y-3 flex-1">
+                            <div className="space-y-3 flex-1 overflow-y-auto max-h-[400px] pr-2">
                                 {klasifikasi.map((k, i) => (
                                     <div
                                         key={k.id_klasifikasi}
@@ -294,7 +328,7 @@ export default function PengirimanDetailPage() {
                                             <img
                                                 src={`/storage/${k.gambar}`}
                                                 alt={`Sampel ${i + 1}`}
-                                                className="w-16 h-12 rounded-lg object-cover flex-shrink-0"
+                                                className="w-16 h-12 rounded-lg object-cover flex-shrink-0 bg-gray-200"
                                             />
                                         ) : (
                                             <div
@@ -312,12 +346,23 @@ export default function PengirimanDetailPage() {
                                                 Akurasi : {Number(k.akurasi).toFixed(0)}%
                                             </div>
                                         </div>
+
+                                        {/* Tombol Hapus Tanpa Konfirmasi */}
+                                        <button
+                                            onClick={() => handleDeleteKlasifikasi(k.id_klasifikasi)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/50 text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-sm"
+                                            title="Hapus"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {/* Hasil akhir banner (DUMMY) */}
+                        {/* Hasil akhir banner */}
                         <div
                             className="mt-5 rounded-3xl p-5 text-center text-white"
                             style={{ backgroundColor: '#7a9cc6' }}
@@ -336,11 +381,11 @@ export default function PengirimanDetailPage() {
                     {/* ════ KANAN: NIR + Interpretasi ════ */}
                     <div className="flex flex-col gap-6">
 
-                        {/* Input Data NIR (DUMMY) */}
+                        {/* Input Data NIR */}
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <h3 className="text-base font-bold text-gray-800 mb-1">Input Data NIR</h3>
                             <p className="text-xs text-gray-400 mb-4">
-                                {savedHasil ? 'Data NIR tersimpan — edit lalu klik Update' : 'Belum ada data NIR — isi lalu klik Save'}
+                                {savedHasil && savedHasil.nilai_rendemen ? 'Data NIR tersimpan — edit lalu klik Update' : 'Belum ada data NIR — isi lalu klik Save'}
                             </p>
 
                             <div className="space-y-3">
@@ -387,11 +432,11 @@ export default function PengirimanDetailPage() {
                             </div>
                         </div>
 
-                        {/* Interpretasi Kualitas (DUMMY) */}
+                        {/* Interpretasi Kualitas */}
                         <div className="bg-white rounded-2xl shadow-sm p-6 flex-1">
                             <h3 className="text-base font-bold text-gray-800 mb-4">Interpretasi Kualitas</h3>
 
-                            {savedHasil && kualitasInfo ? (
+                            {savedHasil && interpretasi ? (
                                 <div className="space-y-2 text-sm">
                                     {/* % Rendemen */}
                                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
@@ -410,7 +455,10 @@ export default function PengirimanDetailPage() {
                                     {/* Badge interpretasi */}
                                     <div
                                         className="mt-3 p-3 rounded-xl text-center font-bold text-sm"
-                                        style={{ color: kualitasInfo.color, backgroundColor: kualitasInfo.bg }}
+                                        style={{
+                                            color: kualitasInfo?.color || '#1e3a5f',
+                                            backgroundColor: kualitasInfo?.bg || '#dce8f5'
+                                        }}
                                     >
                                         Kualitas Tebu : {interpretasi}
                                     </div>

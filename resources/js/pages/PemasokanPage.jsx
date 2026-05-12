@@ -44,6 +44,7 @@ function PemasokanPage() {
         jam_masuk: nowTimeStr,
         catatan: '',
         status: 'pending',
+        status_antrian: 'menunggu',
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -93,6 +94,7 @@ function PemasokanPage() {
             jam_masuk: nowTime,
             catatan: '',
             status: 'pending',
+            status_antrian: 'menunggu',
         });
         setError('');
         setShowModal(true);
@@ -107,6 +109,7 @@ function PemasokanPage() {
             jam_masuk: t.jam_masuk?.slice(0, 5) ?? '',
             catatan: t.catatan ?? '',
             status: t.status ?? 'pending',
+            status_antrian: t.status_antrian ?? 'menunggu',
         });
         setError('');
         // Ubah URL ke /pemasokan/{id_supplier}/edit/{id_transaksi}
@@ -140,6 +143,7 @@ function PemasokanPage() {
                     jam_masuk: form.jam_masuk,
                     catatan: form.catatan,
                     status: form.status,
+                    status_antrian: form.status_antrian,
                 });
             } else {
                 // Mode ADD — buat tebu + transaksi baru
@@ -166,7 +170,20 @@ function PemasokanPage() {
                 )
             );
         } catch (err) {
-            console.error('Gagal update status', err);
+            alert('Gagal update status lab: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleUpdateStatusAntrian = async (id_transaksi, newStatus) => {
+        try {
+            await axios.put(`/api/transaksi/${id_transaksi}/status-antrian`, { status_antrian: newStatus });
+            setTransaksi(prev =>
+                prev.map(t =>
+                    t.id_transaksi === id_transaksi ? { ...t, status_antrian: newStatus } : t
+                )
+            );
+        } catch (err) {
+            alert('Gagal update status antrian: ' + (err.response?.data?.message || err.message));
         }
     };
 
@@ -279,7 +296,8 @@ function PemasokanPage() {
                                 <th className="px-6 py-4 text-left font-semibold">Informasi Pengiriman</th>
                                 <th className="px-6 py-4 text-left font-semibold">Berat (Kg)</th>
                                 <th className="px-6 py-4 text-left font-semibold">Tanggal</th>
-                                <th className="px-6 py-4 text-left font-semibold">Status</th>
+                                <th className="px-6 py-4 text-left font-semibold">Status Antrian</th>
+                                <th className="px-6 py-4 text-left font-semibold">Status Lab</th>
                                 <th className="px-6 py-4 text-left font-semibold">NIR</th>
                                 <th className="px-6 py-4 text-center font-semibold">Aksi</th>
                             </tr>
@@ -326,20 +344,29 @@ function PemasokanPage() {
                                             {formatTanggal(t.tanggal_masuk)}
                                         </td>
 
-                                        {/* Status — bisa diklik untuk toggle */}
+                                        {/* Status Antrian */}
                                         <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleUpdateStatus(
-                                                    t.id_transaksi,
-                                                    t.status === 'selesai' ? 'pending' : 'selesai'
-                                                )}
-                                                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${t.status === 'selesai'
-                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                    : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                                                    }`}
+                                            <select
+                                                value={t.status_antrian || 'menunggu'}
+                                                onChange={(e) => handleUpdateStatusAntrian(t.id_transaksi, e.target.value)}
+                                                className={`text-xs font-semibold rounded-lg px-2 py-1 outline-none cursor-pointer border focus:ring-2 transition-colors w-full
+                                                    ${t.status_antrian === 'menunggu' ? 'bg-yellow-50 text-yellow-700 border-yellow-200 focus:ring-yellow-400' :
+                                                        t.status_antrian === 'diproses' ? 'bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-400' :
+                                                            'bg-green-50 text-green-700 border-green-200 focus:ring-green-400'}`}
                                             >
-                                                {t.status === 'selesai' ? 'Selesai' : 'Pending'}
-                                            </button>
+                                                <option value="menunggu">Menunggu</option>
+                                                <option value="diproses">Diproses</option>
+                                                <option value="selesai">Selesai</option>
+                                            </select>
+                                        </td>
+
+                                        {/* Status Lab */}
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                                t.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                                            }`}>
+                                                {t.status === 'pending' ? 'Pending' : 'Selesai'}
+                                            </span>
                                         </td>
 
                                         {/* NIR — dummy dulu */}
@@ -475,18 +502,36 @@ function PemasokanPage() {
                             />
                         </div>
 
-                        {/* Status */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select
-                                value={form.status}
-                                onChange={e => setForm({ ...form, status: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-                            >
-                                <option value="pending">Pending</option>
-                                <option value="selesai">Selesai</option>
-                            </select>
+                        {/* Status Grid */}
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            {/* Status Antrian */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Antrian (Kamera)</label>
+                                <select
+                                    value={form.status_antrian}
+                                    onChange={e => setForm({ ...form, status_antrian: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                >
+                                    <option value="menunggu">Menunggu</option>
+                                    <option value="diproses">Diproses</option>
+                                    <option value="selesai">Selesai</option>
+                                </select>
+                            </div>
+
+                            {/* Status Lab */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Lab</label>
+                                <select
+                                    value={form.status}
+                                    onChange={e => setForm({ ...form, status: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="selesai">Selesai</option>
+                                </select>
+                            </div>
                         </div>
+
 
                         {/* Tombol */}
                         <div className="flex justify-end gap-3">

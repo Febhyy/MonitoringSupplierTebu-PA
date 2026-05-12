@@ -15,10 +15,11 @@ class Hasil extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'id_klasifikasi',
+        'id_transaksi',
         'nilai_brix',
         'nilai_pol',
         'nilai_rendemen',
+        'hasil_akhir',
         'interpretasi_kualitas',
     ];
 
@@ -29,10 +30,10 @@ class Hasil extends Model
     ];
 
     /**
-     * Relationship: Hasil belongs to Klasifikasi
+     * Relationship: Hasil belongs to Transaksi
      */
-    public function klasifikasi()
+    public function transaksi()
     {
-        return $this->belongsTo(Klasifikasi::class, 'id_klasifikasi', 'id_klasifikasi');
+        return $this->belongsTo(Transaksi::class, 'id_transaksi', 'id_transaksi');
     }
 }

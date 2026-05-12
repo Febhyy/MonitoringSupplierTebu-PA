@@ -14,7 +14,7 @@ class HasilController extends Controller
      */
     public function index()
     {
-        $hasil = Hasil::with('klasifikasi')->get();
+        $hasil = Hasil::with('transaksi')->get();
         
         return response()->json([
             'success' => true,
@@ -29,7 +29,7 @@ class HasilController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id_klasifikasi' => 'nullable|exists:klasifikasi,id_klasifikasi',
+            'id_transaksi'   => 'nullable|exists:transaksi,id_transaksi',
             'nilai_brix'     => 'nullable|numeric|min:0|max:100',
             'nilai_pol'      => 'required|numeric|min:0|max:100',
             'nilai_rendemen' => 'required|numeric|min:0|max:100',
@@ -43,16 +43,15 @@ class HasilController extends Controller
             ], 422);
         }
 
-        $data = $request->only(['id_klasifikasi', 'nilai_brix', 'nilai_pol', 'nilai_rendemen']);
+        $data = $request->only(['id_transaksi', 'nilai_brix', 'nilai_pol', 'nilai_rendemen']);
 
-        // Auto-generate interpretasi kualitas berdasarkan nilai_rendemen + hasil klasifikasi
         $data['interpretasi_kualitas'] = $this->generateInterpretasi(
             $request->nilai_rendemen,
-            $request->hasil_klasifikasi ?? 'Bersih'
+            'Bersih'
         );
 
         $hasil = Hasil::create($data);
-        $hasil->load('klasifikasi');
+        $hasil->load('transaksi');
 
         return response()->json([
             'success' => true,
@@ -66,7 +65,7 @@ class HasilController extends Controller
      */
     public function show($id)
     {
-        $hasil = Hasil::with('klasifikasi')->find($id);
+        $hasil = Hasil::with('transaksi')->find($id);
 
         if (!$hasil) {
             return response()->json([
@@ -97,7 +96,7 @@ class HasilController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'id_klasifikasi' => 'nullable|exists:klasifikasi,id_klasifikasi',
+            'id_transaksi'   => 'nullable|exists:transaksi,id_transaksi',
             'nilai_brix'     => 'nullable|numeric|min:0|max:100',
             'nilai_pol'      => 'sometimes|required|numeric|min:0|max:100',
             'nilai_rendemen' => 'sometimes|required|numeric|min:0|max:100',
@@ -111,17 +110,17 @@ class HasilController extends Controller
             ], 422);
         }
 
-        $data = $request->only(['id_klasifikasi', 'nilai_brix', 'nilai_pol', 'nilai_rendemen']);
+        $data = $request->only(['id_transaksi', 'nilai_brix', 'nilai_pol', 'nilai_rendemen']);
 
         // Auto-generate interpretasi if nilai updated
-        if ($request->has('nilai_pol') || $request->has('nilai_rendemen') || $request->has('hasil_klasifikasi')) {
+        if ($request->has('nilai_pol') || $request->has('nilai_rendemen')) {
             $nilaiRendemen    = $request->nilai_rendemen ?? $hasil->nilai_rendemen;
-            $hasilKlasifikasi = $request->hasil_klasifikasi ?? 'Bersih';
+            $hasilKlasifikasi = $hasil->hasil_akhir ?? 'Bersih';
             $data['interpretasi_kualitas'] = $this->generateInterpretasi($nilaiRendemen, $hasilKlasifikasi);
         }
 
         $hasil->update($data);
-        $hasil->load('klasifikasi');
+        $hasil->load('transaksi');
 
         return response()->json([
             'success' => true,

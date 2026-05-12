@@ -19,6 +19,7 @@ return new class extends Migration
             $table->time('jam_masuk');
             $table->text('catatan')->nullable();
             $table->string('status')->default('pending');
+            $table->string('status_antrian')->default('menunggu');
             $table->timestamps();
 
             $table->foreign('id_supplier')->references('id_supplier')->on('supplier')->onDelete('cascade');

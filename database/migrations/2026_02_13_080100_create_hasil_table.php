@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::create('hasil', function (Blueprint $table) {
             $table->id('id_hasil');
-            $table->unsignedBigInteger('id_klasifikasi');
-            $table->decimal('nilai_pol', 5, 2);
-            $table->decimal('nilai_rendemen', 5, 2);
-            $table->string('interpretasi_kualitas');
+            $table->unsignedBigInteger('id_transaksi');
+            $table->decimal('nilai_pol', 5, 2)->nullable();
+            $table->decimal('nilai_rendemen', 5, 2)->nullable();
+            $table->string('hasil_akhir')->nullable();
+            $table->string('interpretasi_kualitas')->nullable();
             $table->timestamps();
 
-            $table->foreign('id_klasifikasi')->references('id_klasifikasi')->on('klasifikasi')->onDelete('cascade');
+            $table->foreign('id_transaksi')->references('id_transaksi')->on('transaksi')->onDelete('cascade');
         });
     }
 

@@ -58,6 +58,7 @@ class TransaksiController extends Controller
             'jam_masuk'     => 'required',
             'catatan'       => 'nullable|string',
             'status'        => 'required|in:pending,selesai',
+            'status_antrian'=> 'sometimes|in:menunggu,diproses,selesai',
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +85,12 @@ class TransaksiController extends Controller
                 'jam_masuk'     => $request->jam_masuk,
                 'catatan'       => $request->catatan,
                 'status'        => $request->status,
+                'status_antrian'=> $request->status_antrian ?? 'menunggu',
+            ]);
+
+            // 3. Buat record hasil kosong
+            \App\Models\Hasil::create([
+                'id_transaksi' => $transaksi->id_transaksi,
             ]);
 
             $transaksi->load('tebu');
@@ -139,6 +146,74 @@ class TransaksiController extends Controller
     }
 
     /**
+     * Update status antrian transaksi (menunggu / diproses / selesai)
+     */
+    public function updateStatusAntrian(Request $request, $id)
+    {
+        $transaksi = Transaksi::find($id);
+
+        if (!$transaksi) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi tidak ditemukan'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'status_antrian' => 'required|in:menunggu,diproses,selesai',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        if ($request->status_antrian === 'diproses') {
+            $exists = Transaksi::where('status_antrian', 'diproses')
+                               ->where('id_transaksi', '!=', $id)
+                               ->exists();
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya boleh ada 1 antrian yang diproses. Silahkan selesaikan transaksi aktif lainnya terlebih dahulu.'
+                ], 400);
+            }
+        }
+
+        $transaksi->update(['status_antrian' => $request->status_antrian]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status antrian berhasil diupdate',
+            'data'    => $transaksi
+        ], 200);
+    }
+
+    /**
+     * Mengambil satu transaksi aktif yang status_antrian = 'diproses'
+     */
+    public function getDiproses()
+    {
+        $transaksi = Transaksi::where('status_antrian', 'diproses')->latest('updated_at')->first();
+
+        if (!$transaksi) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada transaksi yang sedang diproses'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Transaksi diproses berhasil diambil',
+            'data'    => $transaksi
+        ], 200);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -160,8 +235,18 @@ class TransaksiController extends Controller
             ], 422);
         }
 
-        $transaksi = Transaksi::create($request->all());
-        $transaksi->load(['supplier', 'tebu']);
+        $data = $request->all();
+        if (!isset($data['status_antrian'])) {
+            $data['status_antrian'] = 'menunggu';
+        }
+        $transaksi = Transaksi::create($data);
+
+        // Buat record hasil kosong
+        \App\Models\Hasil::create([
+            'id_transaksi' => $transaksi->id_transaksi,
+        ]);
+
+        $transaksi->load(['supplier', 'tebu', 'hasil']);
 
         return response()->json([
             'success' => true,
@@ -175,7 +260,7 @@ class TransaksiController extends Controller
      */
     public function show($id)
     {
-        $transaksi = Transaksi::with(['supplier', 'tebu', 'klasifikasi.hasil'])->find($id);
+        $transaksi = Transaksi::with(['supplier', 'tebu', 'klasifikasi', 'hasil'])->find($id);
 
         if (!$transaksi) {
             return response()->json([
@@ -213,6 +298,7 @@ class TransaksiController extends Controller
             'jam_masuk'     => 'sometimes|required',
             'catatan'       => 'nullable|string',
             'status'        => 'sometimes|required|in:pending,selesai',
+            'status_antrian'=> 'sometimes|in:menunggu,diproses,selesai',
             'berat_tebu'    => 'sometimes|numeric|min:0',
             'no_kendaraan'  => 'sometimes|string|max:255',
         ]);
@@ -234,7 +320,7 @@ class TransaksiController extends Controller
         }
 
         $transaksi->update($request->only([
-            'id_supplier', 'id_tebu', 'tanggal_masuk', 'jam_masuk', 'catatan', 'status'
+            'id_supplier', 'id_tebu', 'tanggal_masuk', 'jam_masuk', 'catatan', 'status', 'status_antrian'
         ]));
         $transaksi->load(['supplier', 'tebu']);
 

@@ -33,11 +33,4 @@ class Klasifikasi extends Model
         return $this->belongsTo(Transaksi::class, 'id_transaksi', 'id_transaksi');
     }
 
-    /**
-     * Relationship: Klasifikasi has many Hasil
-     */
-    public function hasil()
-    {
-        return $this->hasMany(Hasil::class, 'id_klasifikasi', 'id_klasifikasi');
-    }
 }

@@ -36,9 +36,11 @@ Route::delete('/supplier/{id}',      [SupplierController::class, 'destroy']);
 Route::apiResource('tebu', TebuController::class);
 
 // ── Transaksi ──
+Route::get('/transaksi/diproses',       [TransaksiController::class, 'getDiproses']);
 Route::get('/supplier/{id}/transaksi',  [TransaksiController::class, 'bySupplier']);
 Route::post('/transaksi/public',        [TransaksiController::class, 'storePublic']);
 Route::put('/transaksi/{id}/status',    [TransaksiController::class, 'updateStatus']);
+Route::put('/transaksi/{id}/status-antrian', [TransaksiController::class, 'updateStatusAntrian']);
 Route::get('/transaksi/{id}',           [TransaksiController::class, 'show']);
 Route::put('/transaksi/{id}',           [TransaksiController::class, 'update']);
 Route::delete('/transaksi/{id}',        [TransaksiController::class, 'destroy']);

@@ -21,6 +21,7 @@ class Transaksi extends Model
         'jam_masuk',
         'catatan',
         'status',
+        'status_antrian',
     ];
 
     protected $casts = [
@@ -49,5 +50,13 @@ class Transaksi extends Model
     public function klasifikasi()
     {
         return $this->hasMany(Klasifikasi::class, 'id_transaksi', 'id_transaksi');
+    }
+
+    /**
+     * Relationship: Transaksi has one Hasil
+     */
+    public function hasil()
+    {
+        return $this->hasOne(Hasil::class, 'id_transaksi', 'id_transaksi');
     }
 }
