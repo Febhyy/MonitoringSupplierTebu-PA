@@ -171,6 +171,18 @@ class TransaksiController extends Controller
             ], 422);
         }
 
+        if ($request->status_antrian === 'menunggu') {
+            $hasClassification = DB::table('klasifikasi')
+                ->where('id_transaksi', $id)
+                ->exists();
+            if ($hasClassification) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Status antrian tidak dapat diubah kembali menjadi menunggu karena transaksi ini sudah memiliki hasil klasifikasi.'
+                ], 400);
+            }
+        }
+
         if ($request->status_antrian === 'diproses') {
             $exists = Transaksi::where('status_antrian', 'diproses')
                                ->where('id_transaksi', '!=', $id)
@@ -309,6 +321,32 @@ class TransaksiController extends Controller
                 'message' => 'Validasi gagal',
                 'errors'  => $validator->errors()
             ], 422);
+        }
+
+        if ($request->has('status_antrian')) {
+            if ($request->status_antrian === 'menunggu') {
+                $hasClassification = DB::table('klasifikasi')
+                    ->where('id_transaksi', $id)
+                    ->exists();
+                if ($hasClassification) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Status antrian tidak dapat diubah kembali menjadi menunggu karena transaksi ini sudah memiliki hasil klasifikasi.'
+                    ], 400);
+                }
+            }
+
+            if ($request->status_antrian === 'diproses') {
+                $exists = Transaksi::where('status_antrian', 'diproses')
+                                   ->where('id_transaksi', '!=', $id)
+                                   ->exists();
+                if ($exists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Hanya boleh ada 1 antrian yang diproses. Silahkan selesaikan transaksi aktif lainnya terlebih dahulu.'
+                    ], 400);
+                }
+            }
         }
 
         // Update data tebu jika ada

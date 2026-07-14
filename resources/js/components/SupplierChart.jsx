@@ -10,6 +10,11 @@ function SupplierChart({ suppliers = [], selectedSupplier, onSupplierChange, loa
     const [years, setYears] = useState([]);
     const [selectedYear, setSelectedYear] = useState('');
     const [rankingList, setRankingList] = useState([]);
+    const [shipmentStats, setShipmentStats] = useState({
+        total_pengiriman: 0,
+        pengiriman_selesai: 0,
+        pengiriman_pending: 0
+    });
 
     // Summary data yang tetap (keseluruhan, diload sekali saja)
     const [overallSummary, setOverallSummary] = useState({
@@ -48,6 +53,9 @@ function SupplierChart({ suppliers = [], selectedSupplier, onSupplierChange, loa
                     if (response.data.ranking) {
                         setRankingList(response.data.ranking);
                     }
+                    if (response.data.statistik_pengiriman) {
+                        setShipmentStats(response.data.statistik_pengiriman);
+                    }
                 }
             } catch (err) {
                 console.error('Gagal memuat data awal dashboard', err);
@@ -81,6 +89,9 @@ function SupplierChart({ suppliers = [], selectedSupplier, onSupplierChange, loa
                     }
                     if (response.data.ranking) {
                         setRankingList(response.data.ranking);
+                    }
+                    if (response.data.statistik_pengiriman) {
+                        setShipmentStats(response.data.statistik_pengiriman);
                     }
                 }
             } catch (err) {
@@ -323,7 +334,203 @@ function SupplierChart({ suppliers = [], selectedSupplier, onSupplierChange, loa
                 </div>
             </div>
 
-            
+            {/* ===== GRID 2 KOLOM: Ranking Supplier (Kiri) & Statistik Pengiriman (Kanan) ===== */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8 w-full">
+                
+                {/* KOLOM KIRI (col-span-3): Ranking Supplier */}
+                <div className="lg:col-span-3 bg-gray-50 border border-gray-200/60 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div className="pb-3 mb-3 border-b border-gray-200">
+                            <h4 className="text-gray-800 text-xs font-bold uppercase tracking-wider">
+                                Ranking Supplier Berdasarkan Kualitas Tebu
+                            </h4>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                            <table className="w-full text-xs text-left">
+                                <thead>
+                                    <tr style={{ backgroundColor: '#1e3a5f' }} className="text-white text-[10px] uppercase tracking-wider select-none">
+                                        <th scope="col" className="px-4 py-2 font-semibold text-center w-16">Rank</th>
+                                        <th scope="col" className="px-4 py-2">Nama Supplier</th>
+                                        <th scope="col" className="px-4 py-2 text-center">Berat Pengiriman (Ton)</th>
+                                        <th scope="col" className="px-4 py-2 text-center">% Bersih</th>
+                                        <th scope="col" className="px-4 py-2 text-center">% Kotor</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {summaryLoading || chartLoading ? (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-8">
+                                                <div className="animate-pulse flex flex-col items-center justify-center">
+                                                    <div className="h-3 w-24 bg-gray-200 rounded mb-1"></div>
+                                                    <span className="text-gray-400 text-[10px]">Memuat data ranking...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : rankingList.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-8 text-gray-400 font-medium">
+                                                Belum ada data pengiriman terklasifikasi untuk periode ini.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        rankingList.map((row) => {
+                                            const isSelected = selectedSupplier && Number(row.id_supplier) === Number(selectedSupplier);
+                                            
+                                            const pBersih = Number(row.persentase_bersih);
+                                            const pKotor = Number(row.persentase_kotor);
+
+                                            let bersihEl, kotorEl;
+
+                                            if (pBersih > pKotor) {
+                                                bersihEl = (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-green-100 text-green-700 border-green-200">
+                                                        {pBersih.toFixed(2)}%
+                                                    </span>
+                                                );
+                                                kotorEl = (
+                                                    <span className="text-gray-500 font-semibold text-[10px]">
+                                                        {pKotor.toFixed(2)}%
+                                                    </span>
+                                                );
+                                            } else if (pKotor > pBersih) {
+                                                bersihEl = (
+                                                    <span className="text-gray-500 font-semibold text-[10px]">
+                                                        {pBersih.toFixed(2)}%
+                                                    </span>
+                                                );
+                                                kotorEl = (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-red-100 text-red-700 border-red-200">
+                                                        {pKotor.toFixed(2)}%
+                                                    </span>
+                                                );
+                                            } else {
+                                                // 50% : 50%
+                                                bersihEl = (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-yellow-100 text-yellow-700 border-yellow-200">
+                                                        {pBersih.toFixed(2)}%
+                                                    </span>
+                                                );
+                                                kotorEl = (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-yellow-100 text-yellow-700 border-yellow-200">
+                                                        {pKotor.toFixed(2)}%
+                                                    </span>
+                                                );
+                                            }
+
+                                            return (
+                                                <tr
+                                                    key={row.id_supplier}
+                                                    className={`transition-colors ${
+                                                        isSelected
+                                                            ? 'bg-blue-100/85 font-bold text-blue-950 shadow-sm'
+                                                            : 'hover:bg-blue-50/40'
+                                                    }`}
+                                                >
+                                                    <td className="px-4 py-2 text-center select-none">
+                                                        <span className={Number(row.rank) <= 3 ? "text-xl filter drop-shadow-sm block" : "text-xs font-bold text-gray-400"}>
+                                                            {row.rank_display}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2 font-semibold text-gray-800">{row.nama_supplier}</td>
+                                                    <td className="px-4 py-2 text-center font-medium text-gray-700">
+                                                        {Number(row.total_berat_pengiriman).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        {bersihEl}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        {kotorEl}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* KOLOM KANAN (col-span-1): Statistik Pengiriman */}
+                <div className="lg:col-span-1">
+                    <div className="bg-gray-50 border border-gray-200/60 rounded-2xl p-5 shadow-sm h-full flex flex-col justify-between">
+                        <div className="pb-3 mb-3 border-b border-gray-200">
+                            <h4 className="text-gray-800 text-xs font-bold uppercase tracking-wider">
+                                Statistik Pengiriman
+                            </h4>
+                        </div>
+                        
+                        <div className="flex flex-col gap-3.5 justify-around h-full">
+                            {/* Card 1: Total Pengiriman */}
+                            <div className="bg-white border border-gray-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow transition-all duration-300">
+                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-sm text-lg select-none">
+                                    📦
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 text-[9px] font-bold uppercase tracking-wider block leading-tight">
+                                        Total Pengiriman
+                                    </span>
+                                    <span className="text-xl font-extrabold text-gray-800 tracking-tight block mt-0.5">
+                                        {summaryLoading || chartLoading ? (
+                                            <div className="h-6 w-10 bg-gray-200 animate-pulse rounded-lg mt-0.5"></div>
+                                        ) : (
+                                            shipmentStats.total_pengiriman
+                                        )}
+                                    </span>
+                                    <span className="text-[9px] text-gray-400 font-medium block mt-0.5 leading-tight">
+                                        Seluruh transaksi
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Card 2: Sudah Diklasifikasi */}
+                            <div className="bg-white border border-gray-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow transition-all duration-300">
+                                <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0 shadow-sm text-lg select-none">
+                                    ✅
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 text-[9px] font-bold uppercase tracking-wider block leading-tight">
+                                        Sudah Klasifikasi
+                                    </span>
+                                    <span className="text-xl font-extrabold text-green-600 tracking-tight block mt-0.5">
+                                        {summaryLoading || chartLoading ? (
+                                            <div className="h-6 w-10 bg-gray-200 animate-pulse rounded-lg mt-0.5"></div>
+                                        ) : (
+                                            shipmentStats.pengiriman_selesai
+                                        )}
+                                    </span>
+                                    <span className="text-[9px] text-gray-400 font-medium block mt-0.5 leading-tight">
+                                        Memiliki hasil
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Card 3: Menunggu Klasifikasi */}
+                            <div className="bg-white border border-gray-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow transition-all duration-300">
+                                <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 shadow-sm text-lg select-none">
+                                    ⏳
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 text-[9px] font-bold uppercase tracking-wider block leading-tight">
+                                        Menunggu
+                                    </span>
+                                    <span className="text-xl font-extrabold text-amber-600 tracking-tight block mt-0.5">
+                                        {summaryLoading || chartLoading ? (
+                                            <div className="h-6 w-10 bg-gray-200 animate-pulse rounded-lg mt-0.5"></div>
+                                        ) : (
+                                            shipmentStats.pengiriman_pending
+                                        )}
+                                    </span>
+                                    <span className="text-[9px] text-gray-400 font-medium block mt-0.5 leading-tight">
+                                        Belum klasifikasi
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

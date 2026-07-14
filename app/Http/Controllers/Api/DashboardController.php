@@ -149,10 +149,131 @@ class DashboardController extends Controller
             $years = [intval(date('Y'))];
         }
 
+        // Perhitungan ranking supplier berdasarkan persentase tebu bersih (konsep baru berbasis frame)
+        // Subquery untuk menjumlahkan berat tebu per supplier yang sudah memiliki data klasifikasi
+        $transactionSums = DB::table('transaksi as t')
+            ->join('tebu as tb', 't.id_tebu', '=', 'tb.id')
+            ->select('t.id_supplier', DB::raw('SUM(tb.berat_tebu) as total_berat_kg'))
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('klasifikasi as k')
+                    ->whereColumn('k.id_transaksi', 't.id_transaksi');
+            });
+
+        if ($tahun) {
+            $transactionSums->whereYear('t.tanggal_masuk', $tahun);
+        }
+        $transactionSums->groupBy('t.id_supplier');
+
+        // Subquery untuk menghitung frame bersih & kotor per supplier yang memiliki data klasifikasi
+        $frameSums = DB::table('transaksi as t')
+            ->join('klasifikasi as k', 't.id_transaksi', '=', 'k.id_transaksi')
+            ->select(
+                't.id_supplier',
+                DB::raw("SUM(CASE WHEN k.label LIKE '%bersih%' THEN 1 ELSE 0 END) as frame_bersih"),
+                DB::raw("SUM(CASE WHEN k.label LIKE '%kotor%' THEN 1 ELSE 0 END) as frame_kotor")
+            );
+
+        if ($tahun) {
+            $frameSums->whereYear('t.tanggal_masuk', $tahun);
+        }
+        $frameSums->groupBy('t.id_supplier');
+
+        // Main query: join supplier dengan subquery di atas
+        $rankingQuery = DB::table('supplier as s')
+            ->leftJoinSub($transactionSums, 'tx', 's.id_supplier', '=', 'tx.id_supplier')
+            ->leftJoinSub($frameSums, 'fr', 's.id_supplier', '=', 'fr.id_supplier')
+            ->select(
+                's.id_supplier',
+                's.nama_supplier',
+                DB::raw('COALESCE(tx.total_berat_kg, 0) as total_berat_kg'),
+                DB::raw('COALESCE(fr.frame_bersih, 0) as total_frame_bersih'),
+                DB::raw('COALESCE(fr.frame_kotor, 0) as total_frame_kotor')
+            );
+
+        $rankingData = $rankingQuery->get();
+
+        $ranking = [];
+        foreach ($rankingData as $row) {
+            $totalFrame = $row->total_frame_bersih + $row->total_frame_kotor;
+
+            // Hanya masukkan supplier yang memiliki pengiriman terklasifikasi pada periode filter
+            if ($totalFrame > 0) {
+                $totalBeratTon = round(($row->total_berat_kg ?? 0) / 1000, 3);
+                $persentaseBersih = ($row->total_frame_bersih / $totalFrame) * 100;
+                $persentaseKotor = 100 - $persentaseBersih;
+
+                $ranking[] = [
+                    'id_supplier' => $row->id_supplier,
+                    'nama_supplier' => $row->nama_supplier,
+                    'total_berat_pengiriman' => $totalBeratTon,
+                    'total_frame_bersih' => intval($row->total_frame_bersih),
+                    'total_frame_kotor' => intval($row->total_frame_kotor),
+                    'persentase_bersih' => round($persentaseBersih, 2),
+                    'persentase_kotor' => round($persentaseKotor, 2),
+                ];
+            }
+        }
+
+        // Sort: persentase_bersih desc, kemudian total_berat_pengiriman desc, kemudian nama_supplier asc
+        usort($ranking, function ($a, $b) {
+            if ($b['persentase_bersih'] == $a['persentase_bersih']) {
+                if ($b['total_berat_pengiriman'] == $a['total_berat_pengiriman']) {
+                    return strcmp($a['nama_supplier'], $b['nama_supplier']);
+                }
+                return $b['total_berat_pengiriman'] <=> $a['total_berat_pengiriman'];
+            }
+            return $b['persentase_bersih'] <=> $a['persentase_bersih'];
+        });
+
+        // Tambahkan nomor peringkat dan emoji
+        foreach ($ranking as $index => &$item) {
+            $rankNum = $index + 1;
+            $item['rank'] = $rankNum;
+            if ($rankNum === 1) {
+                $item['rank_display'] = '🥇';
+            } elseif ($rankNum === 2) {
+                $item['rank_display'] = '🥈';
+            } elseif ($rankNum === 3) {
+                $item['rank_display'] = '🥉';
+            } else {
+                $item['rank_display'] = (string)$rankNum;
+            }
+        }
+
+        // Perhitungan Statistik Pengiriman berdasarkan filter Tahun dan Supplier yang aktif
+        $totalPengirimanQuery = DB::table('transaksi as t');
+        $pengirimanSelesaiQuery = DB::table('transaksi as t')
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('klasifikasi as k')
+                    ->whereColumn('k.id_transaksi', 't.id_transaksi');
+            });
+
+        if ($supplierId) {
+            $totalPengirimanQuery->where('t.id_supplier', $supplierId);
+            $pengirimanSelesaiQuery->where('t.id_supplier', $supplierId);
+        }
+
+        if ($tahun) {
+            $totalPengirimanQuery->whereYear('t.tanggal_masuk', $tahun);
+            $pengirimanSelesaiQuery->whereYear('t.tanggal_masuk', $tahun);
+        }
+
+        $totalPengiriman = $totalPengirimanQuery->count();
+        $pengirimanSelesai = $pengirimanSelesaiQuery->count();
+        $pengirimanPending = $totalPengiriman - $pengirimanSelesai;
+
         return response()->json([
             'success' => true,
             'data' => $result,
             'years' => $years,
+            'ranking' => $ranking,
+            'statistik_pengiriman' => [
+                'total_pengiriman' => $totalPengiriman,
+                'pengiriman_selesai' => $pengirimanSelesai,
+                'pengiriman_pending' => $pengirimanPending,
+            ],
             'summary' => [
                 'total_supplier' => $totalSuppliersCount,
                 'total_berat_kg' => round($totalBeratKg, 2),
