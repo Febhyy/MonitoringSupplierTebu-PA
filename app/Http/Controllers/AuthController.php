@@ -1,5 +1,16 @@
 <?php
 
+/**
+ * ============================================================================
+ * NON-AKTIF (DISABLED)
+ * ============================================================================
+ * Controller AuthController ini saat ini dinonaktifkan karena sistem monitoring kualitas tebu
+ * tidak menggunakan autentikasi masuk (login).
+ * Rute login di routes/api.php telah dinonaktifkan.
+ * File ini dipertahankan hanya sebagai referensi masa depan.
+ * ============================================================================
+ */
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;

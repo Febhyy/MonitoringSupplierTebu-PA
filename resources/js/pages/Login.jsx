@@ -1,3 +1,13 @@
+/**
+ * ============================================================================
+ * NON-AKTIF (DISABLED)
+ * ============================================================================
+ * Halaman Login ini saat ini dinonaktifkan karena sistem monitoring kualitas tebu
+ * tidak menggunakan sistem autentikasi masuk (login).
+ * Rute ke halaman ini di resources/js/app.jsx telah dinonaktifkan.
+ * ============================================================================
+ */
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';

@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\TebuController;
 use App\Http\Controllers\Api\TransaksiController;
 use App\Http\Controllers\Api\KlasifikasiController;
 use App\Http\Controllers\Api\HasilController;
-use App\Http\Controllers\AuthController;
+// use App\Http\Controllers\AuthController; // DINONAKTIFKAN
 
 /*
 |--------------------------------------------------------------------------
@@ -21,8 +21,8 @@ Route::get('/test', function () {
 });
 Route::get('/ping', fn() => response()->json(['status' => 'ok']));
 
-// Auth routes
-Route::post('/login', [AuthController::class, 'login']);
+// // Auth routes — DINONAKTIFKAN
+// Route::post('/login', [AuthController::class, 'login']);
 
 // ── Supplier ──
 Route::get('/supplier',              [SupplierController::class, 'index']);
@@ -46,6 +46,11 @@ Route::put('/transaksi/{id}',           [TransaksiController::class, 'update']);
 Route::delete('/transaksi/{id}',        [TransaksiController::class, 'destroy']);
 Route::post('/transaksi',               [TransaksiController::class, 'store']);
 Route::get('/transaksi',                [TransaksiController::class, 'index']);
+
+use App\Http\Controllers\Api\DashboardController;
+
+// ── Dashboard ──
+Route::get('/dashboard/kualitas', [DashboardController::class, 'getKualitasTahunan']);
 
 // ── Klasifikasi ──
 Route::apiResource('klasifikasi', KlasifikasiController::class);

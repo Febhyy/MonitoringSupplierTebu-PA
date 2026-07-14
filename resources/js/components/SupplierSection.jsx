@@ -126,7 +126,7 @@ function SupplierSection({ suppliers, onSupplierAdded, showModal, onOpenModal, o
                     onClick={handleOpen}
                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl shadow transition-colors text-sm"
                 >
-                    + Add Supplier
+                    + Tambahkan Supplier
                 </button>
             </div>
 

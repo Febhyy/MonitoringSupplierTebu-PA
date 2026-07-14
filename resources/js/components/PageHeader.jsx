@@ -13,7 +13,7 @@ function PageHeader({ title = 'Manajemen Supplier Tebu', subtitle = 'Sistem Moni
         >
             {/* ===== Logo PTPN X - ujung kiri ===== */}
             <div
-                className="flex items-center px-6"
+                className="hidden md:flex items-center px-6"
                 style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' }}
             >
                 <img
@@ -24,20 +24,21 @@ function PageHeader({ title = 'Manajemen Supplier Tebu', subtitle = 'Sistem Moni
             </div>
 
             {/* ===== Judul - benar-benar di tengah ===== */}
-            <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-32">
                 {/* Baris 1: ikon tebu + judul */}
                 <div className="flex items-center gap-2">
                     <img
                         src="/images/tebu.png"
                         alt="Ikon Tebu"
-                        style={{ height: '28px', width: 'auto', objectFit: 'contain' }}
+                        className="h-5 md:h-7"
+                        style={{ width: 'auto', objectFit: 'contain' }}
                     />
-                    <h1 className="text-white font-bold text-2xl leading-tight">
+                    <h1 className="text-white font-bold text-base md:text-2xl leading-tight text-center">
                         {title}
                     </h1>
                 </div>
                 {/* Baris 2: subtitle */}
-                <p className="text-gray-300 text-sm mt-0.5 text-center">{subtitle}</p>
+                <p className="text-gray-300 text-xs md:text-sm mt-0.5 text-center line-clamp-1">{subtitle}</p>
             </div>
         </header>
 

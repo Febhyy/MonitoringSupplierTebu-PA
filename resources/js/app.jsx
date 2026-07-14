@@ -4,18 +4,18 @@ import '../css/app.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
+// import Login from './pages/Login'; // DINONAKTIFKAN
 import Dashboard from './pages/Dashboard';
 import PemasokanPage from './pages/PemasokanPage';
 import PengirimanDetailPage from './pages/PengirimanDetailPage';
-import ProtectedRoute from './components/ProtectedRoute';
+// import ProtectedRoute from './components/ProtectedRoute'; // DINONAKTIFKAN
 
 function App() {
     return (
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/login" element={<Login />} />
+                {/* <Route path="/login" element={<Login />} /> */ /* DINONAKTIFKAN */}
                 {/* Semua route dashboard, supplier, tambahsupplier ditangani oleh Dashboard */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/supplier" element={<Dashboard />} />

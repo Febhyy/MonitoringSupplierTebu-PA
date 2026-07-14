@@ -125,26 +125,29 @@ function Dashboard() {
                 subtitle="Sistem Monitoring Supplier Tebu"
             />
 
-            {/* ===== BODY: Sidebar + Content ===== */}
-            <div className="flex flex-1">
+            {/* Breadcrumb */}
+            <div
+                className="px-8 py-3 bg-white border-b border-gray-200 flex items-center gap-2 text-sm text-gray-500 sticky top-[72px] z-30"
+                style={{ position: 'sticky', top: '72.5px', zIndex: 30 }}
+            >
+                <button
+                    onClick={() => navigate('/dashboard')}
+                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                >
+                    <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7A1 1 0 003 11h1v7a1 1 0 001 1h4v-5h2v5h4a1 1 0 001-1v-7h1a1 1 0 00.707-1.707l-7-7z" />
+                    </svg>
+                    Dashboard
+                </button>
+            </div>
 
-                {/* Sidebar */}
-                <aside>
-                    <nav>
-                        <a
-                            href="#"
-                            className="flex items-center gap-2 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                            </svg>
-                            Dashboard
-                        </a>
-                    </nav>
-                </aside>
+            {/* ===== BODY: Sidebar + Content ===== */}
+            <div className="flex flex-1" style={{ paddingLeft: '5%', paddingRight: '5%' }}>
+
+
 
                 {/* Main Content */}
-                <main className="flex-1 p-8">
+                <main className="flex-1 py-6 px-2 md:p-8">
 
                     {/* Section Dashboard (chart) */}
                     <div ref={dashboardSectionRef}>

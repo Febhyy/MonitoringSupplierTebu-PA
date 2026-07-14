@@ -32,7 +32,7 @@ function PemasokanPage() {
     // Modal Add/Edit Pengiriman
     const [showModal, setShowModal] = useState(false);
     const [editingTransaksi, setEditingTransaksi] = useState(null); // null = mode add
-    
+
     // Custom Delete Modal
     const [deleteModal, setDeleteModal] = useState(false);
     const [deletingTransaksiId, setDeletingTransaksiId] = useState(null);
@@ -253,25 +253,28 @@ function PemasokanPage() {
             />
 
             {/* Breadcrumb */}
-            <div className="px-8 py-3 bg-white border-b border-gray-200 flex items-center gap-2 text-sm text-gray-500">
+            <div
+                className="px-8 py-3 bg-white border-b border-gray-200 flex items-center gap-2 text-sm text-gray-500 sticky top-[72px] z-30"
+                style={{ position: 'sticky', top: '72.5px', zIndex: 30 }}
+            >
                 <button
                     onClick={() => navigate('/dashboard')}
                     className="flex items-center gap-1 hover:text-blue-600 transition-colors"
                 >
                     <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7A1 1 0 003 11h1v7a1 1 0 001 1h4v-5h2v5h4a1 1 0 001-1v-7h1a1 1 0 00.707-1.707l-7-7z" />
                     </svg>
                     Dashboard
                 </button>
-                <span> &gt; </span>
+                <span className="text-gray-400">&gt;</span>
                 <span className="text-gray-700 font-medium">{supplier.nama_supplier}</span>
             </div>
 
-            <main className="flex-1 p-8">
+            <main className="flex-1 py-6 md:py-8" style={{ paddingLeft: '5%', paddingRight: '5%' }}>
                 {/* Info Card Supplier */}
-                <div className="bg-gray-100 rounded-xl shadow-sm p-6 mb-6 flex items-center justify-between">
+                <div className="bg-gray-100 rounded-xl shadow-sm p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-gray-700 text-white flex items-center justify-center text-2xl font-bold">
+                        <div className="w-14 h-14 rounded-full bg-gray-700 text-white flex items-center justify-center text-2xl font-bold shrink-0">
                             {getInitial(supplier.nama_supplier)}
                         </div>
                         <div>
@@ -284,7 +287,7 @@ function PemasokanPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-8 text-center">
+                    <div className="flex gap-8 justify-around md:justify-end text-center w-full md:w-auto">
                         <div>
                             <div className="text-3xl font-bold text-gray-800">{totalPengiriman}</div>
                             <div className="text-xs text-gray-500 mt-1">Pengiriman</div>
@@ -300,14 +303,14 @@ function PemasokanPage() {
                 <div className="flex justify-end mb-4">
                     <button
                         onClick={handleOpenModal}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl shadow transition-colors text-sm"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl shadow transition-colors text-sm"
                     >
-                        + Add Pengiriman
+                        + Tambahkan Pengiriman
                     </button>
                 </div>
 
                 {/* Tabel Pengiriman */}
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr style={{ backgroundColor: '#1e3a5f' }} className="text-white">
@@ -380,9 +383,8 @@ function PemasokanPage() {
 
                                         {/* Status Lab */}
                                         <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                t.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
-                                            }`}>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${t.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                                                }`}>
                                                 {t.status === 'pending' ? 'Pending' : 'Selesai'}
                                             </span>
                                         </td>
@@ -446,7 +448,7 @@ function PemasokanPage() {
                     onClick={handleCloseModal}
                 >
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8"
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-5 sm:p-8"
                         onClick={e => e.stopPropagation()}
                     >
                         {deleteModal ? (
@@ -476,7 +478,7 @@ function PemasokanPage() {
                         ) : (
                             <>
                                 <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
-                                    {editingTransaksi ? 'Edit Pengiriman' : 'Data Pemasokan'}
+                                    {editingTransaksi ? 'Edit Pengiriman' : 'Data Pengiriman'}
                                 </h2>
 
                                 {error && (
@@ -485,7 +487,7 @@ function PemasokanPage() {
                                     </div>
                                 )}
 
-                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     {/* Berat Tebu */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Berat Tebu (Kg)</label>
@@ -547,7 +549,7 @@ function PemasokanPage() {
                                 </div>
 
                                 {/* Status Grid */}
-                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                     {/* Status Antrian */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Status Antrian (Kamera)</label>

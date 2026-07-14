@@ -38,6 +38,7 @@ export default function PengirimanDetailPage() {
 
     const [nir, setNir] = useState({ briks: '', pol: '', rendemen: '' });
     const [nirStatus, setNirStatus] = useState(''); // '' | 'loading' | 'saved' | 'updated'
+    const [previewImage, setPreviewImage] = useState(null);
 
     useEffect(() => {
         fetchTransaksi();
@@ -221,7 +222,10 @@ export default function PengirimanDetailPage() {
             />
 
             {/* ══ BREADCRUMB ══ */}
-            <div className="px-8 py-2.5 bg-white border-b border-gray-200 flex items-center gap-2 text-sm text-gray-500">
+            <div
+                className="px-8 py-3 bg-white border-b border-gray-200 flex items-center gap-2 text-sm text-gray-500 sticky top-[72px] z-30"
+                style={{ position: 'sticky', top: '72.5px', zIndex: 30 }}
+            >
                 <button
                     onClick={() => navigate('/dashboard')}
                     className="flex items-center gap-1 hover:text-blue-600 transition-colors"
@@ -243,17 +247,17 @@ export default function PengirimanDetailPage() {
             </div>
 
             {/* ══ MAIN ══ */}
-            <main className="flex-1 px-8 py-6 max-w-5xl mx-auto w-full">
+            <main className="flex-1 py-6 md:py-8 w-full px-4 md:px-[10%]">
 
                 {/* ── Info Card (data ASLI dari API) ── */}
-                <div className="bg-white rounded-2xl shadow-sm px-6 py-4 mb-6 flex flex-wrap items-center gap-4">
-                    <span className="text-lg font-bold text-gray-800">
+                <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex flex-col md:flex-row md:items-center gap-4">
+                    <span className="text-lg font-bold text-gray-800 text-center md:text-left">
                         Pengiriman #{transaksi.id_transaksi}
                     </span>
-                    <div className="flex flex-wrap gap-6 ml-auto items-center">
+                    <div className="flex flex-wrap gap-4 md:gap-6 md:ml-auto items-center justify-center md:justify-end w-full md:w-auto">
 
                         {/* ── Status Antrian Dropdown ── */}
-                        <div className="flex items-center gap-2 mr-2">
+                        <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500 font-medium">Status Antrian:</span>
                             <select
                                 value={transaksi.status_antrian || 'menunggu'}
@@ -270,7 +274,7 @@ export default function PengirimanDetailPage() {
                         </div>
 
                         {/* ── Status Lab Badge ── */}
-                        <div className="flex items-center gap-2 mr-4">
+                        <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500 font-medium">Status Lab:</span>
                             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg
                                 ${transaksi.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}
@@ -286,7 +290,7 @@ export default function PengirimanDetailPage() {
                         ].map(item => (
                             <div
                                 key={item.label}
-                                className="rounded-xl px-4 py-2"
+                                className="rounded-xl px-4 py-2 w-full sm:w-auto text-center sm:text-left"
                                 style={{ backgroundColor: '#f1f5f9' }}
                             >
                                 <div className="text-xs text-gray-500 leading-tight">{item.label}</div>
@@ -328,11 +332,12 @@ export default function PengirimanDetailPage() {
                                             <img
                                                 src={`/storage/${k.gambar}`}
                                                 alt={`Sampel ${i + 1}`}
-                                                className="w-16 h-12 rounded-lg object-cover flex-shrink-0 bg-gray-200"
+                                                className="w-24 h-20 rounded-lg object-cover flex-shrink-0 bg-gray-200 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                                onClick={() => setPreviewImage(`/storage/${k.gambar}`)}
                                             />
                                         ) : (
                                             <div
-                                                className="w-16 h-12 rounded-lg flex-shrink-0 flex items-center justify-center"
+                                                className="w-24 h-20 rounded-lg flex-shrink-0 flex items-center justify-center"
                                                 style={{ background: 'linear-gradient(135deg, #3a5a1c, #6b9a2f)' }}
                                             >
                                                 <span className="text-xl">🌾</span>
@@ -343,7 +348,7 @@ export default function PengirimanDetailPage() {
                                         <div className="flex-1">
                                             <div className="font-semibold text-gray-800 text-sm">{k.label}</div>
                                             <div className="text-xs text-gray-500 mt-0.5">
-                                                Akurasi : {Number(k.akurasi).toFixed(0)}%
+                                                Confidence : {Number(k.akurasi).toFixed(0)}%
                                             </div>
                                         </div>
 
@@ -369,7 +374,7 @@ export default function PengirimanDetailPage() {
                         >
                             <div className="font-bold text-xl mb-1">Hasil Akhir : {hasilAkhir}</div>
                             <div className="text-sm mt-1 font-medium opacity-90">
-                                {total} Sampel | Akurasi Rata-Rata : {avgAkurasi}%
+                                {total} Sampel | Confidence Rata-Rata : {avgAkurasi}%
                             </div>
                             <div className="text-sm mt-0.5 font-medium opacity-90">
                                 Bersih : {bersihCount} ({total ? Math.round(bersihCount / total * 100) : 0}%)
@@ -390,7 +395,7 @@ export default function PengirimanDetailPage() {
 
                             <div className="space-y-3">
                                 {[
-                                    { key: 'briks', label: '% Briks', placeholder: '', required: false },
+                                    { key: 'briks', label: '% Briks', placeholder: '', required: true },
                                     { key: 'pol', label: '% Pol', placeholder: '', required: true },
                                     { key: 'rendemen', label: '% Rendemen', placeholder: '', required: true },
                                 ].map(field => (
@@ -476,6 +481,31 @@ export default function PengirimanDetailPage() {
                     </div>
                 </div>
             </main>
+
+            {/* ══ IMAGE PREVIEW MODAL ══ */}
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-all cursor-pointer"
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <div
+                        className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl p-2 flex flex-col items-center cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/75 transition-colors z-10 font-bold"
+                            onClick={() => setPreviewImage(null)}
+                        >
+                            ✕
+                        </button>
+                        <img
+                            src={previewImage}
+                            alt="Preview Klasifikasi"
+                            className="max-w-full max-h-[80vh] rounded-lg object-contain"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
